@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Service FastAPI
+  api:
+    build: .
+    container_name: rag_semantic_api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+      - ./chroma_db:/app/chroma_db
+    environment:
+      - OLLAMA_HOST=${OLLAMA_HOST}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - CHUNKING_METHOD=${CHUNKING_METHOD}
+      - SIMILARITY_THRESHOLD=${SIMILARITY_THRESHOLD}
+      - MIN_CHUNK_SIZE=${MIN_CHUNK_SIZE}
+      - MAX_CHUNK_SIZE=${MAX_CHUNK_SIZE}
+      - BREAKPOINT_THRESHOLD_TYPE=${BREAKPOINT_THRESHOLD_TYPE}
+      - VECTOR_STORE=${VECTOR_STORE}
+      - CHROMA_PERSIST_DIR=${CHROMA_PERSIST_DIR}
+      - TOP_K_RESULTS=${TOP_K_RESULTS}
+    depends_on:
+      - ollama
+    networks:
+      - rag_network
+    restart: unless-stopped
+
+  # Service Ollama pour embeddings
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_embeddings
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - rag_network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  rag_network:
+    driver: bridge
